@@ -1,0 +1,999 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 11
+            }
+          ]
+        }
+      },
+      "id": "0d691b00-649e-490f-983e-9c759ddd6faf",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -272,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const keywords = [\n  \"properti\",\n  \"pasar properti Indonesia\",\n  \"harga rumah\",\n  \"apartemen\",\n  \"perumahan\",\n  \"KPR\",\n  \"pengembang properti\",\n  \"investasi properti\",\n  \"kawasan hunian\"\n];\n\nreturn keywords.map(keyword => ({\n  json: {\n    keyword,\n    url: `https://news.google.com/rss/search?q=${encodeURIComponent(\n      `site:antaranews.com ${keyword}`\n    )}&hl=id&gl=ID&ceid=ID:id`\n  }\n}));"
+      },
+      "id": "df18cd7d-c792-4fe0-aca7-78711498dce5",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.url}}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "a8061103-02d2-4241-aff5-2e05c9170d5f",
+      "name": "HTTP Request1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a8229daf-1fb2-4c8a-98e3-1bc893f777f3",
+      "name": "XML1",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        464,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\nconst seen = new Set();\n\nconst propertyRegex =\n  /\\b(harga properti|harga rumah|harga apartemen|pasar properti|pasar perumahan|bisnis properti|investasi properti|sektor properti|industri properti|properti residensial|properti komersial|pengembang properti|developer properti|proyek properti|transaksi properti|penjualan properti|kredit pemilikan rumah|suku bunga KPR|rumah subsidi|perumahan subsidi|apartemen baru|pembangunan perumahan|kawasan perumahan|real estate|real estat|properti indonesia)\\b/i;\n\nconst excludeRegex =\n  /\\b(kasus|tersangka|terdakwa|sidang|pengadilan|korupsi|pembunuhan|kecelakaan|kebakaran|bencana|sepak bola|liga|pemain|artis|penyanyi|film|festival|wali kota|bupati|gubernur|presiden|pemilu|pilkada|perang|konflik|polisi|narkoba|kriminal|pencurian|wisata|pariwisata|kuliner)\\b/i;\n\nconst now = Date.now();\nconst maxAge = 30 * 24 * 60 * 60 * 1000;\n\nfunction findArticles(obj) {\n  if (!obj || typeof obj !== 'object') return;\n\n  if (Array.isArray(obj)) {\n    for (const item of obj) findArticles(item);\n    return;\n  }\n\n  if (obj.title && obj.link) {\n    const title = String(obj.title).trim();\n\n    const link = typeof obj.link === 'object'\n      ? obj.link.href || obj.link['#text'] || ''\n      : String(obj.link);\n\n    const description = String(\n      obj.description || obj.contentSnippet || ''\n    );\n\n    const pubDate = obj.pubDate || '';\n\n    const isAntara =\n      /antaranews\\.com/i.test(link) ||\n      /-\\s*ANTARA News(?:\\s+[A-Za-z]+)?$/i.test(title);\n\n    // Judul harus membahas pasar atau industri properti\n    const isProperty = propertyRegex.test(title);\n\n    const isExcluded = excludeRegex.test(title);\n\n    // Hanya berita maksimal 30 hari\n    const articleDate = Date.parse(pubDate);\n    const isRecent =\n      !pubDate ||\n      (Number.isFinite(articleDate) &&\n       now - articleDate <= maxAge &&\n       now >= articleDate);\n\n    if (\n      isAntara &&\n      isProperty &&\n      !isExcluded &&\n      isRecent &&\n      !seen.has(link)\n    ) {\n      seen.add(link);\n\n      results.push({\n        json: {\n          title,\n          link,\n          description,\n          pubDate\n        }\n      });\n    }\n  }\n\n  for (const value of Object.values(obj)) {\n    if (value && typeof value === 'object') {\n      findArticles(value);\n    }\n  }\n}\n\nfor (const item of $input.all()) {\n  findArticles(item.json);\n}\n\nreturn results;"
+      },
+      "id": "5ce3bec6-5f62-44c2-b92e-ab9423f72ff8",
+      "name": "Code in JavaScript2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "link",
+        "options": {}
+      },
+      "id": "3f290f07-f042-4abe-9cb9-f9d2d83cd56d",
+      "name": "Remove Duplicates2",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        208,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.link}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Cookie",
+              "value": "CONSENT=PENDING+987"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 10
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text",
+              "outputPropertyName": "body"
+            }
+          }
+        }
+      },
+      "id": "7de62168-3b31-48fc-b1a7-f36ca2214025",
+      "name": "HTTP Request3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        432,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/fairna/workflow/main/guidelines/content-guidelines.md",
+        "options": {}
+      },
+      "id": "287a4de0-e945-4c6e-8523-467432d7c70f",
+      "name": "HTTP Request2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        192,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "6129a062-35f6-4490-b4ba-3c5d1bef1f93",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        624,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n\n  const content = Array.isArray(data.content)\n    ? data.content.join('\\n')\n    : String(data.content || '');\n\n  const cleanedContent = content\n    .replace(/\\s+/g, ' ')\n    .trim();\n\n  const isValid =\n    data.title &&\n    data.image &&\n    data.canonicalUrl &&\n    cleanedContent.length >= 300;\n\n  if (!isValid) continue;\n\n  results.push({\n    json: {\n      title: data.title,\n      description: data.description,\n      image: data.image,\n      publishedAt: data.publishedAt,\n      canonicalUrl: data.canonicalUrl,\n      content: cleanedContent\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "81db86d0-ada7-4e2a-8e67-20ccbcc1cc50",
+      "name": "Code in JavaScript4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "id": "2903c6a0-3d93-4a17-8d89-3c6603a3e465",
+      "name": "Merge1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2256,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/fairna/workflow/main/guidelines/agent-instructions.md",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "agentInstructions"
+            }
+          }
+        }
+      },
+      "id": "49f13924-45f0-4b95-88c4-96a30a915ab5",
+      "name": "Load Agent Instructions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2016,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/fairna/workflow/main/guidelines/content-guidelines.md",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "contentGuidelines"
+            }
+          }
+        }
+      },
+      "id": "db13b414-5132-438e-a43a-09e58b00a219",
+      "name": "Load Content Guidelines",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2016,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{\n  \"ARTICLE DATA\\n\" +\n  \"Title: \" + $json.title + \"\\n\" +\n  \"Description: \" + $json.description + \"\\n\" +\n  \"Published At: \" + $json.publishedAt + \"\\n\" +\n  \"Article URL: \" + $json.canonicalUrl + \"\\n\\n\" +\n  \"FULL ARTICLE:\\n\" + $json.content + \"\\n\\n\" +\n  \"AGENT INSTRUCTIONS:\\n\" + $json.agentInstructions + \"\\n\\n\" +\n  \"CONTENT GUIDELINES:\\n\" + $json.contentGuidelines + \"\\n\\n\" +\n  \"TASK:\\n\" +\n  \"Analyze the article and create a content plan for an Instagram carousel.\\n\\n\" +\n  \"Determine:\\n\" +\n  \"1. Main news angle.\\n\" +\n  \"2. Key facts and supporting information.\\n\" +\n  \"3. Important data, figures, and findings.\\n\" +\n  \"4. Recommended narrative flow for a maximum of 6 slides.\\n\" +\n  \"5. Key message for each slide.\\n\" +\n  \"6. Suggested caption and relevant hashtags.\\n\\n\" +\n  \"Use only information supported by the article.\\n\" +\n  \"Do not invent facts, statistics, or quotations.\\n\" +\n  \"Do not create visual designs yet.\"\n}}",
+        "options": {
+          "systemMessage": "You are a content strategist for Rumah123, an Indonesian property portal. Follow the instructions supplied in the prompt."
+        }
+      },
+      "id": "37d039e0-7773-4fac-af6e-8b5ceb7e2ded",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2672,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "id": "2c77ab71-cd63-4b90-ad6c-3ab437c28a80",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        2672,
+        864
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 4,
+        "options": {}
+      },
+      "id": "fb177dba-4515-41d2-92d1-14d38c75da64",
+      "name": "Merge2",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3392,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/fairna/workflow/main/guidelines/brand-guidelines.md",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "brandGuidelines"
+            }
+          }
+        }
+      },
+      "id": "36181021-c118-497d-9c8c-152927b8f878",
+      "name": "HTTP Request5",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3072,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/fairna/workflow/main/guidelines/creative-guidelines.md",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "creativeGuidelines"
+            }
+          }
+        }
+      },
+      "id": "4dffcc3e-6d9f-4c05-bd65-7a6e074733ce",
+      "name": "HTTP Request6",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3072,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/fairna/workflow/main/guidelines/output-specification.md",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "outputSpecification"
+            }
+          }
+        }
+      },
+      "id": "50d106db-07e4-4fc3-9eb8-1d8b69bdd70f",
+      "name": "HTTP Request7",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3088,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $json.body || '';\nconst link = $json.link || '';\n\nconst timestamp = html.match(/data-n-a-ts=\"([^\"]+)\"/);\nconst signature = html.match(/data-n-a-sg=\"([^\"]+)\"/);\n\nconst articleId = link.match(/\\/articles\\/([^?]+)/)?.[1];\n\nif (!timestamp || !signature || !articleId) {\n  throw new Error('Google News parameters tidak lengkap');\n}\n\nreturn {\n  json: {\n    title: $json.title,\n    link,\n    description: $json.description,\n    pubDate: $json.pubDate,\n    articleId,\n    timestamp: Number(timestamp[1]),\n    signature: signature[1]\n  }\n};"
+      },
+      "id": "3cddc116-f315-4011-ae49-2a0fa721a505",
+      "name": "Code in JavaScript3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://news.google.com/_/DotsSplashUi/data/batchexecute?rpcids=Fbv4je",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded;charset=UTF-8"
+            },
+            {
+              "name": "Origin",
+              "value": "https://news.google.com"
+            },
+            {
+              "name": "Referer",
+              "value": "https://news.google.com/"
+            },
+            {
+              "name": "X-Same-Domain",
+              "value": "1"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Cookie",
+              "value": "CONSENT=PENDING+987"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/x-www-form-urlencoded;charset=UTF-8",
+        "body": "={{\n  (() => {\n    const inner = JSON.stringify([\n      \"garturlreq\",\n      [\n        [\"X\",\"X\",[\"X\",\"X\"],null,null,1,1,\"US:en\",null,1,null,null,null,null,null,0,1],\n        \"X\",\"X\",1,[1,1,1],1,1,null,0,0,null,0\n      ],\n      $json.articleId,\n      $json.timestamp,\n      $json.signature\n    ]);\n\n    const outer = JSON.stringify([\n      [[\"Fbv4je\", inner, null, \"generic\"]]\n    ]);\n\n    return \"f.req=\" + encodeURIComponent(outer);\n  })()\n}}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text",
+              "outputPropertyName": "response"
+            }
+          }
+        }
+      },
+      "id": "bdd39f57-c258-46a6-bcb8-33edcc3dd6bb",
+      "name": "HTTP Request4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        864,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.response || '';\n\nconst clean = raw.replace(/^\\)\\]\\}'\\s*/, '').trim();\n\nconst frames = JSON.parse(clean);\n\nconst frame = frames.find(\n  item =>\n    Array.isArray(item) &&\n    item[0] === 'wrb.fr' &&\n    item[1] === 'Fbv4je'\n);\n\nif (!frame || !frame[2]) {\n  throw new Error('Respons URL Google tidak ditemukan');\n}\n\nconst result = JSON.parse(frame[2]);\n\nif (result[0] !== 'garturlres' || !result[1]) {\n  throw new Error('URL artikel tidak ditemukan');\n}\n\nconst articleUrl = result[1].trim();\n\nconst isAntaraArticle =\n  /^https:\\/\\/(?:www\\.|m\\.)?antaranews\\.com\\/(?:amp\\/)?berita\\/\\d+\\//i\n    .test(articleUrl);\n\nif (!isAntaraArticle) {\n  throw new Error('URL bukan artikel ANTARA: ' + articleUrl);\n}\n\nreturn {\n  json: {\n    title: $json.title,\n    pubDate: $json.pubDate,\n    articleUrl\n  }\n};"
+      },
+      "id": "b8f1186c-875d-4fc1-b3a6-d9bd34d60a7e",
+      "name": "Code in JavaScript1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.articleUrl.replace(\"://m.antaranews.com/amp/\", \"://www.antaranews.com/\") }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "articleHtml"
+            }
+          }
+        }
+      },
+      "id": "f51b16ea-e457-44cd-8a44-1c4a41abd2c1",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1280,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "articleHtml",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "title",
+              "cssSelector": "meta[property=\"og:title\"]",
+              "returnValue": "attribute",
+              "attribute": "content"
+            },
+            {
+              "key": "description",
+              "cssSelector": "meta[property=\"og:description\"]"
+            },
+            {
+              "key": "description",
+              "cssSelector": "meta[property=\"og:description\"]",
+              "returnValue": "attribute",
+              "attribute": "content"
+            },
+            {
+              "key": "image",
+              "cssSelector": "meta[property=\"og:image\"]",
+              "returnValue": "attribute",
+              "attribute": "content"
+            },
+            {
+              "key": "publishedAt",
+              "cssSelector": "meta[property=\"article:published_time\"]",
+              "returnValue": "attribute",
+              "attribute": "content"
+            },
+            {
+              "key": "canonicalUrl",
+              "cssSelector": "link[rel=\"canonical\"]",
+              "returnValue": "attribute",
+              "attribute": "href"
+            },
+            {
+              "key": "content",
+              "cssSelector": ".wrap__article-detail-content.post-content",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e817fa39-543f-4730-8a69-b61ddbee38c8",
+      "name": "HTML",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1504,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    title: $json.title,\n    description: $json.description,\n    content: $json.content,\n    image: $json.image,\n    publishedAt: $json.publishedAt,\n    canonicalUrl: $json.canonicalUrl,\n    agentInstructions: $json.agentInstructions,\n    contentGuidelines: $json.contentGuidelines\n  }\n};"
+      },
+      "id": "827ae2e6-b355-448e-a6df-db8d9f02d509",
+      "name": "Code in JavaScript5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2448,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{\n  (() => {\n    const example = {\n      carousel: { topic: \"...\", slide_count: 6, aspect_ratio: \"4:5\", canvas: { width: 1080, height: 1350, format: \"png\" } },\n      caption: { text: \"...\", hashtags: [\"...\"], call_to_action: \"...\" },\n      slides: [{ slide_number: 1, purpose: \"...\", headline: \"...\", body: \"...\", key_facts: [], visual: { subject: \"...\", type: \"...\", description: \"...\", asset_status: \"to_generate\" }, layout: { composition: \"...\", background: \"...\", text_alignment: \"left\", visual_position: \"...\" } }]\n    };\n    return \"CONTENT PLAN:\\n\" + $json.output + \"\\n\\n\" +\n      \"BRAND GUIDELINES:\\n\" + $json.brandGuidelines + \"\\n\\n\" +\n      \"CREATIVE GUIDELINES:\\n\" + $json.creativeGuidelines + \"\\n\\n\" +\n      \"OUTPUT SPECIFICATION:\\n\" + $json.outputSpecification + \"\\n\\n\" +\n      \"TASK:\\n\" +\n      \"Create the complete Instagram carousel design based on the content plan.\\n\\n\" +\n      \"DESIGN REQUIREMENTS:\\n\" +\n      \"1. Create between 1 and 6 slides. Do not force 6 slides; the number depends on the amount of information.\\n\" +\n      \"2. Create a unique visual layout for each slide.\\n\" +\n      \"3. Follow all brand and creative guidelines.\\n\" +\n      \"4. Keep all facts and figures consistent with the source article.\\n\" +\n      \"5. Design each slide in portrait 4:5 format (1080x1350 px).\\n\" +\n      \"6. Provide clear visual concepts and image-generation instructions for every slide.\\n\" +\n      \"7. Ensure text hierarchy, readability, and consistent branding.\\n\\n\" +\n      \"OUTPUT STRUCTURE RULES:\\n\" +\n      \"1. Return exactly ONE carousel object.\\n\" +\n      \"2. Return exactly ONE caption object for the entire carousel.\\n\" +\n      \"3. Return slides as an array containing 1-6 slide objects.\\n\" +\n      \"4. NEVER put caption or carousel objects inside individual slide objects.\\n\" +\n      \"5. Each slide must contain only its own content, visual instructions, and layout.\\n\" +\n      \"6. Include slide_number, purpose, headline, body, key_facts, visual, and layout in each slide.\\n\" +\n      \"7. The caption must contain text, hashtags, and call_to_action.\\n\" +\n      \"8. Do not repeat caption, hashtags, or carousel metadata inside slides.\\n\" +\n      \"9. slide_count must equal the real number of slides.\\n\\n\" +\n      \"EXPECTED JSON STRUCTURE:\\n\" + JSON.stringify(example, null, 2) + \"\\n\\n\" +\n      \"Return valid JSON only. No markdown code fences or explanations.\";\n  })()\n}}",
+        "options": {
+          "systemMessage": "You are a senior carousel designer for Rumah123. Output valid structured JSON only, following the supplied output specification."
+        }
+      },
+      "id": "9b9a2e97-0de1-441c-81a4-f08bc1245ed5",
+      "name": "AI Agent1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3600,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "id": "8ed1355d-277c-4942-9705-a4bb3ed4731f",
+      "name": "Google Gemini Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        3504,
+        880
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.output;\n\nconst clean = raw\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nconst data = JSON.parse(clean);\n\nreturn data.slides.map((slide, index) => ({\n  json: {\n    ...slide,\n    slideNumber: index + 1,\n    caption: data.caption,\n    carousel: data.carousel\n  }\n}));"
+      },
+      "id": "52c7be0f-28f7-4a4c-91b0-33316c7c0614",
+      "name": "Code in JavaScript6",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3936,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.1-flash-lite-image",
+          "mode": "list",
+          "cachedResultName": "Nano Banana 2 Lite (Nano Banana 2 Lite)"
+        },
+        "prompt": "={{\n  \"Create a complete Instagram carousel slide, portrait 4:5.\\n\" +\n  \"Slide: \" + $json.slideNumber + \"\\n\" +\n  \"Headline: \" + $json.headline + \"\\n\" +\n  \"Purpose: \" + $json.purpose + \"\\n\" +\n  \"Body text: \" + $json.body + \"\\n\" +\n  \"Key facts: \" + JSON.stringify($json.key_facts) + \"\\n\" +\n  \"Visual: \" + JSON.stringify($json.visual) + \"\\n\" +\n  \"Layout: \" + JSON.stringify($json.layout) + \"\\n\" +\n  \"Brand elements: \" + JSON.stringify($json.brand_elements) + \"\\n\" +\n  \"Creative direction: \" + JSON.stringify($json.carousel && $json.carousel.creative_direction) + \"\\n\" +\n  \"Follow Rumah123 brand guidelines. Create a polished, professional design.\"\n}}",
+        "options": {}
+      },
+      "id": "53ec2315-a080-4680-ad4a-c5320529bbc4",
+      "name": "Generate an image",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        4448,
+        656
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "dTKc3DlODk1JNNlP",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ff9943c3-8f46-4eb0-917e-8b9613540105",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        4176,
+        640
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "XML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          },
+          {
+            "node": "Load Agent Instructions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Load Content Guidelines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Agent Instructions": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Content Guidelines": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 3
+          },
+          {
+            "node": "HTTP Request5",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request6",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request5": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request6": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP Request7": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request4": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript6": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate an image": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Generate an image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6729e871-aff6-4821-a004-3b27b03a1651",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "509d102bf4eace179d283f5c038c0017623a4154eaaf52d14b98553c44408d4a"
+  },
+  "nodeGroups": [],
+  "id": "itb4SLfg9lOagbGz",
+  "tags": []
+}
