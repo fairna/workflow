@@ -565,8 +565,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.2,
       "position": [
-        3504,
-        880
+        3600,
+        912
       ],
       "credentials": {
         "googlePalmApi": {
@@ -591,33 +591,6 @@
     },
     {
       "parameters": {
-        "resource": "image",
-        "modelId": {
-          "__rl": true,
-          "value": "models/gemini-3.1-flash-lite-image",
-          "mode": "list",
-          "cachedResultName": "Nano Banana 2 Lite (Nano Banana 2 Lite)"
-        },
-        "prompt": "={{\n  \"Create a complete Instagram carousel slide, portrait 4:5.\\n\" +\n  \"Slide: \" + $json.slideNumber + \"\\n\" +\n  \"Headline: \" + $json.headline + \"\\n\" +\n  \"Purpose: \" + $json.purpose + \"\\n\" +\n  \"Body text: \" + $json.body + \"\\n\" +\n  \"Key facts: \" + JSON.stringify($json.key_facts) + \"\\n\" +\n  \"Visual: \" + JSON.stringify($json.visual) + \"\\n\" +\n  \"Layout: \" + JSON.stringify($json.layout) + \"\\n\" +\n  \"Brand elements: \" + JSON.stringify($json.brand_elements) + \"\\n\" +\n  \"Creative direction: \" + JSON.stringify($json.carousel && $json.carousel.creative_direction) + \"\\n\" +\n  \"Follow Rumah123 brand guidelines. Create a polished, professional design.\"\n}}",
-        "options": {}
-      },
-      "id": "53ec2315-a080-4680-ad4a-c5320529bbc4",
-      "name": "Generate an image",
-      "type": "@n8n/n8n-nodes-langchain.googleGemini",
-      "typeVersion": 1.2,
-      "position": [
-        4448,
-        656
-      ],
-      "credentials": {
-        "googlePalmApi": {
-          "id": "dTKc3DlODk1JNNlP",
-          "name": "Google Gemini(PaLM) Api account"
-        }
-      }
-    },
-    {
-      "parameters": {
         "options": {}
       },
       "id": "ff9943c3-8f46-4eb0-917e-8b9613540105",
@@ -628,6 +601,32 @@
         4176,
         640
       ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-3.1-flash-image-preview"
+        },
+        "prompt": "=={{\n  \"SLIDE DATA:\\n\" + JSON.stringify($json, null, 2) + \"\\n\\n\" +\n  \"TASK:\\n\" +\n  \"Create a detailed image-generation prompt for this Instagram carousel slide.\\n\\n\" +\n  \"INSTRUCTIONS:\\n\" +\n  \"- Follow the headline, key facts, and visual description.\\n\" +\n  \"- Create a professional editorial design for Rumah123.\\n\" +\n  \"- Use Indonesian language for all displayed text.\\n\" +\n  \"- Include the exact headline and key facts.\\n\" +\n  \"- Create clear typography, hierarchy, spacing, and visual composition.\\n\" +\n  \"- Use portrait 4:5 format, 1080x1350 pixels.\\n\" +\n  \"- Do not invent or alter facts.\\n\\n\" +\n  \"Return only the complete image-generation prompt.\"\n}}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        4416,
+        656
+      ],
+      "id": "c65e5a2e-cd67-442f-9cd7-7c86f22a59e1",
+      "name": "Generate an image",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "dTKc3DlODk1JNNlP",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -959,23 +958,23 @@
         ]
       ]
     },
-    "Generate an image": {
-      "main": [
-        [
-          {
-            "node": "Loop Over Items",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Loop Over Items": {
       "main": [
         [],
         [
           {
             "node": "Generate an image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate an image": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript6",
             "type": "main",
             "index": 0
           }
@@ -988,7 +987,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "6729e871-aff6-4821-a004-3b27b03a1651",
+  "versionId": "ba3c43a3-6678-4fcd-95fe-8bd587b71430",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "509d102bf4eace179d283f5c038c0017623a4154eaaf52d14b98553c44408d4a"
